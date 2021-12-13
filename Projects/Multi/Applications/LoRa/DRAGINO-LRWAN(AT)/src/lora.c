@@ -483,7 +483,7 @@ void LORA_Init (LoRaMainCallback_t *callbacks, LoRaParam_t* LoRaParam )
 	#if defined(LoRa_Sensor_Node) || defined(AT_Data_Send)
 	
 	#if defined(LoRa_Sensor_Node)
-	PRINTF("\n\rLGT-92 Device\n\r");
+	PRINTF("\n\rLGT-92 Device prepared by ME\n\r");
 	#else
 	PRINTF("\n\rLoRa ST Module\n\r");
 	#endif

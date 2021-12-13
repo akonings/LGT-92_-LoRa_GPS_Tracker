@@ -5,7 +5,10 @@
   * @date    08-January-2018
   * @brief   this is the main!
   ******************************************************************************
-  * @attention
+  * @attention   //region_ru864   // data_success    txDone   UpLinkCounter=   Exit static mode  Enter
+	
+	inputbutton = HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_14);
+	maar:  user_key_event  = interrupt event button
   *
   * <h2><center>&copy; Copyright (c) 2017 STMicroelectronics International N.V. 
   * All rights reserved.</center></h2>
@@ -385,7 +388,7 @@ void CalibrateToZero(void);
 /* Private functions ---------------------------------------------------------*/
 
 /**
-  * @brief  Main program
+  * @brief  Main program    Image Version
   * @param  None
   * @retval None
   */
@@ -1856,49 +1859,67 @@ void user_key_event(void)
 		}
 		BSP_sensor_Init();
 		press_button_times++;
+		PRINTF("Button Press no %d\r\n",press_button_times);
 		HAL_GPIO_WritePin(LED1_PORT,LED0_PIN,GPIO_PIN_SET);
 			
 		uint32_t currentTime = TimerGetCurrentTime();
 		
-		while(HAL_GPIO_ReadPin(GPIO_USERKEY_PORT,GPIO_USERKEY_PIN)==GPIO_PIN_SET)
+		/* == wait for depressing button == */
+		while(HAL_GPIO_ReadPin(GPIO_USERKEY_PORT,GPIO_USERKEY_PIN)==GPIO_PIN_SET)					// == pin 14 port B
 		{				
-			if(TimerGetElapsedTime(currentTime) >= 1000 && TimerGetElapsedTime(currentTime) < 3000)//send
-			{			
-			  user_key_duration=1;
-			}			
-			else if(TimerGetElapsedTime(currentTime) >= 3000)//system reset,Activation Mode
-			{ 
-        press_button_times=0;					
-				for(int i=0;i<10;i++)
-				{
-					HAL_GPIO_TogglePin(LED1_PORT,LED0_PIN);
-					HAL_Delay(100);
-				}
-				user_key_duration=4;
-				break;
-			}			
+									if(TimerGetElapsedTime(currentTime) >= 5 && TimerGetElapsedTime(currentTime) < 3000)//   user key duration = 1 bij > 5msec < 300msec
+									{			
+										user_key_duration=1;
+									}			
+									if(TimerGetElapsedTime(currentTime) >= 3000 && TimerGetElapsedTime(currentTime) < 8000)//   user key duration = 1 bij > 5msec < 300msec
+									{
+										user_key_duration=3;
+									}
+									
+									if(TimerGetElapsedTime(currentTime) >= 10000)// ===>>> system reset, OR Alarm  Activation Mode ===========
+									{ 
+													press_button_times=0;					
+													for(int i=0;i<10;i++)
+													{
+														HAL_GPIO_TogglePin(LED1_PORT,LED0_PIN);    // KNIPPER DE KNIPPER
+														HAL_Delay(100);
+													}
+													user_key_duration=10;
+													break;  																			// En verder met alarm functionaliteit
+									}			
     }
 		HAL_GPIO_WritePin(LED1_PORT,LED0_PIN,GPIO_PIN_RESET);
+		/* == END wait for depressing button == */
+
+			/* == check for 3x button = SLEEP == */
+		if (press_button_times==3)
+					{
+							press_button_times=0;
+							user_key_duration=3;
+					}
 		
-		if(press_button_times==5)
-		{	
-			press_button_times=0;
-			user_key_duration=5;
-		}			
+			/* == check for 5x button = ALARM OFF === */
+			if(press_button_times==5)
+						{	
+							press_button_times=0;
+							user_key_duration=5;
+						}			
+						
+		/*=================================================================================================================================
+			*	===========================  CHECK FOR WHICH FUNCTION,   Button Press Period or NoF Button Presses ==============================
+			=================================================================================================================================*/
 		switch(user_key_duration)
 		{
-			case 1:
+			case 1:			/* ===  Key duration 1 == */
+								{
+									user_key_duration=0;
+									PRINTF("Send() routine is called, \r\n");
+									Send();
+									break;
+								}		
+			case 3://sleep
 			{
-				user_key_duration=0;
-				
-//				if(sleep_status==0)
-//				{
-//				  Send();
-//				}
-				break;
-			}		
-			case 2://sleep
-			{
+				PRINTF("SLEEP routine is called, \r\n");
 				sleep_status=1;
 				TimerStop(&MacStateCheckTimer);
 				TimerStop(&TxDelayedTimer);
@@ -1916,18 +1937,18 @@ void user_key_event(void)
 				user_key_duration=0;
 				break;
 			}		
-			case 3://system reset,Activation Mode
+			case 8://system reset,Activation Mode
 			{
 				user_key_duration=0;
 				NVIC_SystemReset();
 				break;
 			}
-			case 4:
+			case 10:
 			{
 				GPS_ALARM =1;
 		    GS = 1;
 				dr_power = 1;
-				ALARM = 1;	
+				//ALARM = 1;	
 				TimerStart( &IWDGRefreshTimer);	
 				user_key_duration=0;
 				lora_state_GPS_Send();
